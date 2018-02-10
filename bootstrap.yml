@@ -6,8 +6,9 @@
 # considered the master account.
 Accounts:
   Management:
-    AccountId: 1234567889
+    AccountId: 1234567889  
     Stack: Control         # One stack is allowed
+    #Role: admins    #If no role is provided, default auto generated is used, or the user has admin privileges
     Region: eu-west-1
     Parameters:
       CidrBlock: '10.0.0.0/24'
@@ -15,7 +16,7 @@ Accounts:
       DomainName: control.binx.internal
   Development:
     Stack: SingleRegion
-    Role: admins
+    #Role: admins    #If no role is provided, default auto generated is used
     Region: eu-west-1
     Parameters:
       # In first version only output can be used from previous deployed stacks
@@ -25,7 +26,7 @@ Accounts:
       DomainName: dev.binx.internal
   Staging:
     Stack: HA
-    Role: admins
+    #Role: admins    #If no role is provided, default auto generated is used, or the user has admin privileges
     Region: eu-west-1
     Parameters:
       CloudTrailBucket: ${Account.Management.CloudTrailBucket}  
@@ -35,7 +36,7 @@ Accounts:
       DomainName: stag.binx.internal
   Production:
     Stack: HA
-    Role: admins
+    #Role: admins    #If no role is provided, default auto generated is used, or the user has admin privileges
     Region: eu-west-1
     Parameters:
       CloudTrailBucket: ${Account.Management.CloudTrailBucket}  
