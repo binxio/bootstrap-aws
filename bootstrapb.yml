@@ -52,13 +52,40 @@ Accounts:
 Stacks:
   Control:
     GroupsAndUsers:
-      Template: ./cfn/usersandgroups.yml
-      Parameters: 
+      # If convertor is given, it's executed. It will generate a yml
+      # cfn file which is deployed as usual. It probably uses a 
+      # template file like: iam_users_groups.yml.jinja2. We might
+      # want add this feature later.
+      Convertor: ./scripts/generate_iam_users_groups.py
+      Variables:
+        Groups:
+          Admins:
+            Roles:
+              - ${Account.Management.AccountId}/admin
+              - ${Account.Production.AccountId}/admin
+              - ${Account.Staging.AccountId}/admin
+              - ${Account.Development.AccountId}/admin
+          Developers:
+            Roles:
+              - ${Account.Management.AccountId}/developer
+              - ${Account.Production.AccountId}/developer
+              - ${Account.Staging.AccountId}/developer
+              - ${Account.Development.AccountId}/developer
+        Users:
+          mvandongen@xebia.com:
+            Groups:
+              - Admins
+          mvanholsteijn@xebia.com:
+            Groups:
+              - Admins
+          tdevries@xebia.com:
+            Groups:
+              - Admins
+          johndoe@xebia.com:
+            Groups:
+              - Developers
+      Parameters:  # Even with a convertor template, we can still provide parameters
         MasterAccountId: ${Account.Management.AccountId}
-        ManagementAccountId: ${Account.Developer.AccountId}
-        DeveloperAccountId: ${Account.Developer.AccountId}
-        StagingAccountId: ${Account.Staging.AccountId}
-        ProductionAccountId: ${Account.Staging.AccountId}
     Roles:
       Template: ./cfn/roles.yml
       Parameters:
