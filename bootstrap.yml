@@ -1,0 +1,149 @@
+# Accounts are created in this order:
+# If AccountId is provided, the organization is created manually
+# and won't be created when executing this script. Tipically this
+# is the master account. If the provided account id matches the 
+# account id of the user being used to deploy this script, this is
+# considered the master account.
+Accounts:
+  Management:
+    AccountId: 1234567889
+    Stack: Control         # One stack is allowed
+    Region: eu-west-1
+    Parameters:
+      CidrBlock: '10.0.0.0/24'
+      ExternalDomainName: control.binx.io
+      DomainName: control.binx.internal
+  Development:
+    Stack: SingleRegion
+    Role: admins
+    Region: eu-west-1
+    Parameters:
+      # In first version only output can be used from previous deployed stacks
+      CloudTrailBucket: ${Account.Management.CloudTrailBucket}  
+      CidrBlock: '10.10.0.0/24'
+      ExternalDomainName: dev.binx.io
+      DomainName: dev.binx.internal
+  Staging:
+    Stack: HA
+    Role: admins
+    Region: eu-west-1
+    Parameters:
+      CloudTrailBucket: ${Account.Management.CloudTrailBucket}  
+      CidrBlockUS: '10.60.0.0/24'
+      CidrBlockEU: '10.70.0.0/24'
+      ExternalDomainName: stag.binx.io
+      DomainName: stag.binx.internal
+  Production:
+    Stack: HA
+    Role: admins
+    Region: eu-west-1
+    Parameters:
+      CloudTrailBucket: ${Account.Management.CloudTrailBucket}  
+      CidrBlockUS: '10.100.0.0/24'
+      CidrBlockEU: '10.110.0.0/24'
+      ExternalDomainName: binx.io
+      DomainName: binx.internal
+      
+Stacks:
+  Control:
+    GroupsAndUsers:
+      # If convertor is given, it's executed. It will generate a yml
+      # cfn file which is deployed as usual. It probably uses a 
+      # template file like: iam_users_groups.yml.jinja2. We might
+      # want add this feature later.
+      Convertor: ./scripts/generate_iam_users_groups.py
+      Variables:
+        Groups:
+          Admins:
+            Roles:
+              - !Sub '${Account.Management.AccountId}/admin'
+              - !Sub '${Account.Production.AccountId}/admin'
+              - !Sub '${Account.Staging.AccountId}/admin'
+              - !Sub '${Account.Development.AccountId}/admin'
+          Developers:
+            Roles:
+              - !Sub '${Account.Management.AccountId}/developer'
+              - !Sub '${Account.Production.AccountId}/developer'
+              - !Sub '${Account.Staging.AccountId}/developer'
+              - !Sub '${Account.Development.AccountId}/developer'
+        Users:
+          mvandongen@xebia.com:
+            Groups:
+              - Admins
+          mvanholsteijn@xebia.com:
+            Groups:
+              - Admins
+          tdevries@xebia.com:
+            Groups:
+              - Admins
+          johndoe@xebia.com:
+            Groups:
+              - Developers
+      Parameters:  # Even with a convertor template, we can still provide parameters
+        MasterAccountId: !Sub '${Account.Management.AccountId}'
+    Roles:
+      Template: ./cfn/roles.yml
+      Parameters:
+        MasterAccountId: !Sub '${Account.Management.AccountId}'
+    CloudTrail:
+      Template: ./cfn/cloudtrail.yml
+      Parameters:
+        MasterAccountId: !Sub '${Account.Management.AccountId}'
+        CentralS3Bucket: !Sub '${CloudTrailBucket}'
+    ControlVPC:
+      Template: ./cfn/vpc.yml
+      CreateOnly: True
+      Parameters:
+        VpcName: !Sub '${AccountName}'
+        CidrBlock: !Sub '${CidrBlock}'
+        ExternalDomainName: !Sub '${ExternalDomainName}'
+        InternalDomainName: !Sub '${InternalDomainName}'
+  HA:
+    Roles:
+      Template: ./cfn/roles.yml
+      Parameters:
+        MasterAccountId: !Sub '${Account.Management.AccountId}'
+    CloudTrail:
+      Template: ./cfn/cloudtrail.yml
+      Parameters:
+        MasterAccountId: !Sub '${Account.Management.AccountId}'
+        CentralS3Bucket: !Sub '${CloudTrailBucket}'
+    S3BucketForFun:
+      Template: ./cfn/s3.yml
+    VPCEU:
+      Template: ./cfn/vpc.yml
+      Region: us-west-1
+      CreateOnly: True
+      Parameters:
+        VpcName: !Sub '${AccountName}-EU'
+        CidrBlock: !Sub '${CidrBlockEU}'
+        ExternalDomainName: !Sub 'eu.${ExternalDomainName}'
+        InternalDomainName: !Sub 'eu.${InternalDomainName}'
+    VPCUS:
+      Template: ./cfn/vpc.yml
+      Region: us-west-1
+      CreateOnly: True
+      Parameters:
+        VpcName: !Sub '${AccountName}-US'
+        CidrBlock: !Sub '${CidrBlockUS}'
+        ExternalDomainName: !Sub 'us.${ExternalDomainName}'
+        InternalDomainName: !Sub 'us.${InternalDomainName}'
+  SingleRegion:
+    Roles:
+      Template: ./cfn/roles.yml
+      Parameters:
+        MasterAccountId: !Sub '${Account.Management.AccountId}'
+    CloudTrail:
+      Template: ./cfn/cloudtrail.yml
+      Parameters:
+        MasterAccountId: !Sub '${Account.Management.AccountId}'
+        CentralS3Bucket: !Sub '${CloudTrailBucket}'
+    VPC:
+      Template: ./cfn/vpc.yml
+      Region: us-west-1
+      CreateOnly: True
+      Parameters:
+        VpcName: !Sub '${AccountName}-EU'
+        CidrBlock: !Sub '${CidrBlock}'
+        ExternalDomainName: !Sub 'eu.${ExternalDomainName}'
+        InternalDomainName: !Sub 'eu.${InternalDomainName}'
